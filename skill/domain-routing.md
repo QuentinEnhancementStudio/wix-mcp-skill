@@ -1,4 +1,9 @@
-# Domain Routing Table
+# Domain Routing Table (Reference)
+
+> **Note:** Domain routing is now inline in SKILL.md. This file is a reference
+> for deep menu URLs (last resort) and detailed search terms. It is NOT part
+> of the normal hot path — agents should not need to read this file during
+> typical recipe lookups.
 
 Maps user intents to Wix domains. Use this to identify which recipe file to
 load from `recipes/` and what search terms to use if no recipe matches.
