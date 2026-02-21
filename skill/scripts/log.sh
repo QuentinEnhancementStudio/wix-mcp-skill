@@ -1,7 +1,7 @@
 #!/bin/bash
 # Wix MCP Skill - Decision Logger
 # Usage: log.sh <EVENT_TYPE> <DOMAIN> <DETAIL>
-# Event types: RECIPE_HIT, RECIPE_MISS, README_FALLBACK, BROWSE_AVOIDED, BROWSE_USED
+# Event types: RECIPE_HIT, RECIPE_MISS, README_FALLBACK, BROWSE_AVOIDED, BROWSE_USED, FACT_CACHE_HIT
 
 LOG_DIR="$(dirname "$0")/../logs"
 LOG_FILE="$LOG_DIR/wix-mcp.log"

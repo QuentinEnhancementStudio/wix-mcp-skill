@@ -19,20 +19,35 @@ A single `BrowseWixRESTDocsMenu` call without a deep URL dumps **107K+ character
 
 This skill pre-indexes all 37 Wix MCP recipes across 13 domains and routes agents to the right documentation with minimal token cost:
 
-1. **Identify the domain** from the user's intent (stores, bookings, blog, etc.)
-2. **Load only that domain's recipe file** (~50-450 tokens instead of ~26,845)
-3. **Call `ReadFullDocsArticle`** directly with the recipe URL
-4. **Fall back** to `SearchWixRESTDocumentation` (33x cheaper than Browse) or `WixREADME` only when needed
+1. **Inline routing** — Domain-to-recipe mapping is in SKILL.md itself (no extra file read)
+2. **Instant recipes** — 6 single-recipe domains have URLs inline, enabling immediate `ReadFullDocsArticle` with 0 file reads
+3. **Article clusters** — Multi-recipe domains bundle Related articles for parallel reading, eliminating sequential discovery calls
+4. **Quick facts cache** — Common API facts (package names, field mappings, version detection) answer questions with 0 MCP calls
+5. **Parallel execution patterns** — Speculative search, cluster reads, and multi-domain patterns match or exceed raw MCP parallelism
+6. **Fallback search terms** — Each recipe file includes optimized search terms for the RECIPE_MISS path, so `domain-routing.md` is rarely needed
 
-### Results
+### Measured Results (A/B Test: Catalog V3 Compatibility Question)
 
-| Scenario | Without Skill | With Skill | Savings |
+| Agent | MCP Calls | Total Tokens | Duration | Approach |
+|-------|----------:|-------------:|---------:|----------|
+| **Raw MCP (no skill)** | 12 | 64,505 | 84s | Sequential discovery, 3x BrowseMenu |
+| **With skill v2** | 3 | 39,754 | 50s | Quick facts + parallel cluster read |
+
+| Metric | Improvement |
+|--------|------------|
+| MCP calls | **-75%** (12 → 3) |
+| Total tokens | **-38%** (64K → 40K) |
+| Wall-clock time | **-40%** (84s → 50s) |
+| BrowseMenu calls | **-100%** (3 → 0) |
+
+### Scenario Comparison
+
+| Scenario | Without Skill | With Skill | Delta |
 |----------|------------:|----------:|---------:|
-| Recipe hit (stores) | ~3,950 tokens | ~4,237 tokens | -7% overhead |
-| Recipe hit (blog) | ~3,950 tokens | ~3,967 tokens | ~0% |
-| BrowseMenu avoided | ~30,795 tokens | ~2,662 tokens | **91%** |
-
-The skill is nearly free on recipe hits (+0-7%) while preventing BrowseMenu calls that waste 23,000-27,000 tokens.
+| Instant recipe (blog, media, etc.) | ~3,950 tokens | ~3,400 tokens | **-14%** |
+| Fact cache hit (V3 questions) | ~3,950 tokens | ~2,100 tokens | **-47%** |
+| Recipe hit + cluster parallel | ~14,000+ tokens | ~8,100 tokens | **-42%** |
+| BrowseMenu avoided | ~30,795 tokens | ~2,150 tokens | **-93%** |
 
 ## Installation
 
@@ -91,6 +106,7 @@ awk -F'|' '{
   if ($2 == "RECIPE_MISS") saved += 22860
   if ($2 == "BROWSE_AVOIDED") saved += 22860
   if ($2 == "README_FALLBACK") saved -= 1662
+  if ($2 == "FACT_CACHE_HIT") saved += 3950
 } END { printf "Estimated net tokens saved: %d\n", saved }' \
   ~/.claude/skills/wix-mcp/logs/wix-mcp.log
 ```
@@ -99,24 +115,24 @@ awk -F'|' '{
 
 ```
 skill/                          # -> ~/.claude/skills/wix-mcp/
-├── SKILL.md                    # Core skill (auto-trigger rules + decision flow)
-├── domain-routing.md           # Intent-to-domain mapping + search keywords
-├── decision-tree.md            # Full tool selection flowchart
+├── SKILL.md                    # Core skill (inline routing + decision flow + parallel patterns)
+├── domain-routing.md           # Deep menu URLs reference (rarely needed)
+├── decision-tree.md            # Full tool selection flowchart with parallel patterns
 ├── README.md                   # Internal benchmarks + maintenance guide
-├── recipes/                    # Per-domain recipe indexes
-│   ├── bookings.md             # 9 recipes
-│   ├── stores.md               # 6 recipes
-│   ├── cms.md                  # 5 recipes
-│   ├── payments.md             # 3 recipes
+├── recipes/                    # Per-domain recipe indexes (article cluster format)
+│   ├── bookings.md             # 9 recipes (2 with Related cross-links)
+│   ├── stores.md               # 6 recipes (4 with Related, 1 with Quick facts)
+│   ├── cms.md                  # 5 recipes (1 with Related)
+│   ├── payments.md             # 3 recipes (1 with Related)
 │   ├── sites.md                # 3 recipes
 │   ├── platform.md             # 3 recipes
 │   ├── contacts.md             # 2 recipes
-│   ├── blog.md                 # 1 recipe
-│   ├── pricing-plans.md        # 1 recipe
-│   ├── restaurants.md          # 1 recipe
-│   ├── events.md               # 1 recipe
-│   ├── media.md                # 1 recipe
-│   └── rich-content.md         # 1 recipe
+│   ├── blog.md                 # 1 recipe (instant — URL inline in SKILL.md)
+│   ├── pricing-plans.md        # 1 recipe (instant — URL inline in SKILL.md)
+│   ├── restaurants.md          # 1 recipe (instant — URL inline in SKILL.md)
+│   ├── events.md               # 1 recipe (instant — URL inline in SKILL.md)
+│   ├── media.md                # 1 recipe (instant — URL inline in SKILL.md)
+│   └── rich-content.md         # 1 recipe (instant — URL inline in SKILL.md)
 ├── scripts/
 │   └── log.sh                  # Decision logger
 └── logs/                       # Created on first use
